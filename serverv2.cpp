@@ -172,7 +172,6 @@ int main()
 		clientList[*index].client_network_details = client_add;
 		clientList[*index].clientID = clientCount;
 		clientCount++;
-		
 		char buf[100];
 		char* clientip;
 		char buf2[20];
