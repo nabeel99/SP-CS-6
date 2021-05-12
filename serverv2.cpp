@@ -793,9 +793,10 @@ void* serverWork(void* client){
                 int exec_status= execl(path,programName,NULL);
                 if (exec_status == -1)
                 {
-                    
-					write(pipefd[1],"random",strlen("random"));
-                                    
+						write(pipefd[1],"random",strlen("random"));
+
+						exit(0);
+				                                    
 				}
 
 
