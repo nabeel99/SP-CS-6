@@ -23,7 +23,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/wait.h>
-
+#include <ctype.h>
 #define TRUE 1
 
 /*
@@ -281,12 +281,14 @@ void termThreadCleaner(void* thread_Client){
 	write(STDOUT_FILENO,"In clean up function\n",strlen("In clean up function\n"));
 	int *p = (int *)thread_Client;
 	int clientidd = *p;
-	char buf[10];
-int o = close(clientList[clientidd].connsocket);
+	char buf[100];
+	int o = close(clientList[clientidd].connsocket);	
 	if(o<0){perror("closing error");}
-	int n =sprintf(buf,"%d\n",clientList[clientidd].totalProcesses);
+	int n =sprintf(buf,"Client#%d had %d total Processes\n",clientidd,clientList[clientidd].totalProcesses);
 	write(STDOUT_FILENO,buf,n);
+	//so server knows connection has ended
 	clientList[clientidd].status = false;
+	//decrease connections
 	max_Con = max_Con-1;
 	for(int i = 0;i<clientList[clientidd].totalProcesses;i++){
 		if(clientList[clientidd].pList[i].term==false){
@@ -295,12 +297,27 @@ int o = close(clientList[clientidd].connsocket);
 			// kill all processes after the thread unexpectedly terminates
 			int error =kill(clientList[clientidd].pList[i].pID,SIGTERM);
 			clientList[clientidd].activeProcesses--;
+			clientList[clientidd].pList[i].term=true;
 			if(error<0)perror("error while cleaning process of thread term cleanup");
 		}
 
 	}
 	//close msgsock
 	
+}
+int inputSanitier(char* arg){
+	bool integer = true;
+	for(int i = 0;i<strlen(arg);i++)
+					{
+						int er =isdigit(arg[i]);
+						if(er<=0&& arg[i]!='-')
+						{	
+							integer = false;
+							break;						
+						}
+	}
+	if(integer==true)return 5;
+	else return -1;
 }
 void* serverWork(void* client){
 	
@@ -343,11 +360,235 @@ void* serverWork(void* client){
 		//exit(0);
 		}
 	else{
-    
+		if(strcmp(token,"add")==0){
+			token = strtok(NULL," ");
+			char buf[500];
+			int sum =0;
+			int totalsum = 0;
+			bzero(buf,sizeof(buf));
+			int bInputFlag =0;
+			if(token==NULL){
+
+				write(serverFD,"Incomplete paramaters\n",strlen("Incomplete paramaters\n"));
+	
+			}
+			else
+			{
+				while(token!=NULL&& bInputFlag!=-1)
+				{
+					int alpha = inputSanitier(token);
+					
+					if(alpha==-1)
+						{
+							bInputFlag = -1;
+							break;
+						}
+					
+					//input is fine
+					sscanf(token,"%d",&sum);
+					totalsum = totalsum+ sum;
+					token = strtok(NULL," ");
+				}
+				if(bInputFlag!=-1)
+				{
+					int sF = sprintf(buf,"Addition result : %d\n",totalsum);
+					int e = write(serverFD,buf,sF);
+					if(e<0){
+						perror("Write error of addition result");
+				}
+			}
+			else
+			write(serverFD,"Bad Input, Input contains non-digits\n",strlen("Bad Input, Input contains non-digits\n"));
+
+
+			}
+	
+
+		}
+		
 		
 	
-		//^exit
-	  if(strcmp(token,"kill")==0){
+		//^add
+		else if(strcmp(token,"sub")==0){
+			token = strtok(NULL," ");
+			char buf[500];
+			int start =0,other=0;
+			int totalsum = 0;
+			bzero(buf,sizeof(buf));
+			int bInputFlag =0;
+			if(token==NULL){
+			write(serverFD,"Incomplete paramaters\n",strlen("Incomplete paramaters\n"));
+		//	exit(0);
+			}
+			else
+			{	
+				int alpha2 = inputSanitier(token);
+				if(alpha2<=0)
+						{
+							bInputFlag = -1;
+							
+						}
+				sscanf(token,"%d",&start);
+				token = strtok(NULL," ");
+				while(token!=NULL&& bInputFlag!=-1)
+				{
+					int alpha = inputSanitier(token);
+					if(alpha<=0)
+						{
+							bInputFlag = -1;
+							break;
+														
+						}
+
+					//input is fine
+					
+					sscanf(token,"%d",&other);
+					start = start-other;
+					token = strtok(NULL," ");
+					
+				}
+				totalsum = start;
+				if(bInputFlag!=-1)
+				{
+					int sF = sprintf(buf,"Subtraction result : %d\n",totalsum);
+					int e = write(serverFD,buf,sF);
+					if(e<0){
+						perror("Write error of subtraction result");
+				}
+			}
+			else
+			write(serverFD,"Bad Input, Input contains non-digits\n",strlen("Bad Input, Input contains non-digits\n"));
+
+
+			}
+	
+
+		}
+		//subtract
+		else if(strcmp(token,"div")==0){
+			token = strtok(NULL," ");
+			char buf[500];
+			int start,other;
+			int divByZero=0;
+			int totalsum = 0;
+			bzero(buf,sizeof(buf));
+			int bInputFlag =0;
+			if(token==NULL){
+			write(serverFD,"Incomplete paramaters\n",strlen("Incomplete paramaters\n"));
+		//	exit(0);
+			}
+			else
+			{	
+				int alpha2 = inputSanitier(token);
+				if(alpha2<=0)
+						{
+							bInputFlag = -1;
+					
+							
+						}
+				sscanf(token,"%d",&start);
+				token = strtok(NULL," ");
+				while(token!=NULL&& bInputFlag!=-1&&divByZero!=-1)
+				{
+					int alpha = inputSanitier(token);
+					if(alpha<=0)
+						{
+							bInputFlag = -1;
+							break;
+							
+						}
+
+					//input is fine
+					
+					sscanf(token,"%d",&other);
+					if(other==0)
+					{
+						divByZero = -1;
+						break;
+					}
+					start = start/other;
+					token = strtok(NULL," ");
+					
+				}
+				
+				if(bInputFlag!=-1&&divByZero==0)
+				{
+					totalsum = start;
+					int sF = sprintf(buf,"Division Result result : %d\n",totalsum);
+					int e = write(serverFD,buf,sF);
+					if(e<0){
+						perror("Write error of division result");
+					}
+				}
+				else if(divByZero==-1)
+				{
+					int error =write(serverFD,"Divide by zero error, you cant divide a number by zero\n",strlen("Divide by zero error, you cant divide a number by zero\n"));
+					if(error<0)
+					{
+						perror("Write error");
+					}
+				}
+				else
+				{
+				int error =write(serverFD,"Bad Input, Input contains non-digits\n",strlen("Bad Input, Input contains non-digits\n"));
+					if(error<0){
+						perror("Socket Write error");
+					}
+				}
+			
+
+			}
+	
+
+		}
+//divide
+		else if(strcmp(token,"mul")==0){
+			token = strtok(NULL," ");
+			char buf[500];
+			int sum;
+			int totalsum = 1;
+			bzero(buf,sizeof(buf));
+			int bInputFlag =0;
+			if(token==NULL){
+
+				write(serverFD,"Incomplete paramaters\n",strlen("Incomplete paramaters\n"));
+	
+			}
+			else
+			{
+				while(token!=NULL&& bInputFlag!=-1)
+				{
+					int alpha = inputSanitier(token);
+					
+					if(alpha==-1)
+						{
+							bInputFlag = -1;
+							break;
+						}
+					
+					//input is fine
+					sscanf(token,"%d",&sum);
+					totalsum = totalsum* sum;
+					token = strtok(NULL," ");
+				}
+				if(bInputFlag!=-1)
+				{
+					int sF = sprintf(buf,"Multiplication result : %d\n",totalsum);
+					int e = write(serverFD,buf,sF);
+					if(e<0){
+						perror("Write error of Multiplication result");
+				}
+			}
+			else
+			write(serverFD,"Bad Input, Input contains non-digits\n",strlen("Bad Input, Input contains non-digits\n"));
+
+
+			}
+	
+
+		}
+
+			  else if(strcmp(token,"kill")==0){
 		  write(STDOUT_FILENO,"Here in kill\n",strlen("Here in kill\n"));
 		token = strtok(NULL," ");
         if(token==NULL){
@@ -527,11 +768,23 @@ void* serverWork(void* client){
                     
                   clientList[index].activeProcesses++;
                   clientList[index].totalProcesses++;
-                    write(serverFD, "Exec Successful \n", strlen("Exec Successful \n"));
-					
+                 int d =   write(serverFD, "Exec Successful \n", strlen("Exec Successful \n"));
+					if(d<0){perror("write error");}
 					
 
                     }
+					else{
+					int erro = write(serverFD, "Exec Failed\n", strlen("Exec Failed\n"));
+
+					if(erro<0){
+						perror("write error");
+						}
+					int kerror = kill(cProcess2,SIGTERM);
+						if(kerror<0){perror("kill  error");}
+					
+					}
+					
+
                 }
 
              else if(cProcess2 == 0){
@@ -540,8 +793,7 @@ void* serverWork(void* client){
                 int exec_status= execl(path,programName,NULL);
                 if (exec_status == -1)
                 {
-                    //write(pipefd[1],"random",strlen("random"));
-                    write(serverFD, "Exec Failed\n", strlen("Exec Failed\n"));
+                    
 					write(pipefd[1],"random",strlen("random"));
                                     
 				}
@@ -558,27 +810,30 @@ void* serverWork(void* client){
     }
 	else if(strcmp(token,"exit")==0){
 		write(serverFD,"Server has killed the connection\n",strlen("Server has killed the connection\n"));
-		char client_close[200];
+	 		
+	char client_close[200];
 		int close_c = sprintf(client_close,"Closing Connection with client id#%d with ip %s\n",index,inet_ntoa(clientList[index].client_network_details.sin_addr));
 		write(STDOUT_FILENO,client_close,close_c);
-		//closing client msgsock
-		int e = close(clientList[index].connsocket);
-		//closing client processes still running
-		for(int i = 0;i<clientList[index].totalProcesses;i++){
-			if(clientList[index].pList[i].term==false){
+		//breaking loop so pthread_exit is called and the resulting cleanup handler is called
+		break;
+	// 	//closing client msgsock
+	// 	int e = close(clientList[index].connsocket);
+	// 	//closing client processes still running
+	// 	for(int i = 0;i<clientList[index].totalProcesses;i++){
+	// 		if(clientList[index].pList[i].term==false){
 
-				// kill all processes after the thread unexpectedly terminates
-				int error =kill(clientList[index].pList[i].pID,SIGTERM);
-				if(error<0)perror("error while cleaning process of thread term cleanup");
-				clientList[index].activeProcesses--;
-				clientList[index].pList[i].term=true;
-			}
+	// 			// kill all processes after the thread unexpectedly terminates
+	// 			int error =kill(clientList[index].pList[i].pID,SIGTERM);
+	// 			if(error<0)perror("error while cleaning process of thread term cleanup");
+	// 			clientList[index].activeProcesses--;
+	// 			clientList[index].pList[i].term=true;
+	// 		}
 
-	}
-		if (e<0)perror("server cant close socket");
-		else{
-	    clientList[index].status= false;
-		pr=false;}
+	// }
+	// 	if (e<0)perror("server cant close socket");
+	// 	else{
+	//     clientList[index].status= false;
+	// 	pr=false;}
 
 	}
 		//^ exit
@@ -586,7 +841,7 @@ void* serverWork(void* client){
 		int i = write(serverFD,"Invalid Operation\n",strlen("Invalid Operation\n"));
 		if(i<0){
 			perror("write error");
-			exit(0);
+			break;
 				}
 			}
 		
@@ -594,10 +849,9 @@ void* serverWork(void* client){
 
 		
 	}
-	close(clientList[index].connsocket);
-	clientList[index].status= false;
-	max_Con = max_Con-1;
+	pthread_exit(NULL);
 	pthread_cleanup_pop(0);
+	write(STDOUT_FILENO,"here5\n",strlen("here5\n"));
 
 	
 	 //free(client);

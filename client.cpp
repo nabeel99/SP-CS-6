@@ -32,8 +32,11 @@ void siginthandler(int signo){
 	if (signo==SIGINT){
 		write(STDOUT_FILENO,"Exiting\n",strlen("Exiting\n"));
 		int e =write(sock,"exit",strlen("exit")+1);
-		if(e<0)perror("cant send exit command");
-		//exit(0);
+		printf("sigint e is %d\n",e);
+		if(e<=0){
+			perror("cant send exit command");
+		exit(0);
+		}
 	}
 
 }
