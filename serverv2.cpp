@@ -116,7 +116,7 @@ int main()
 	/* Name socket using wildcards */
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = 0;
+	server.sin_port = ntohs(9003);
 	if (bind(sock, (struct sockaddr *) &server, sizeof(server))) {
 		perror("binding stream socket");
 		exit(1);
@@ -543,6 +543,7 @@ void* serverWork(void* client){
 		}
 //divide
 		else if(strcmp(token,"mul")==0){
+		//	sleep(100);
 			token = strtok(NULL," ");
 			char buf[500];
 			int sum;
@@ -775,12 +776,6 @@ void* serverWork(void* client){
                     }
 					else{
 					int erro = write(serverFD, "Exec Failed\n", strlen("Exec Failed\n"));
-
-					if(erro<0){
-						perror("write error");
-						}
-					int kerror = kill(cProcess2,SIGTERM);
-						if(kerror<0){perror("kill  error");}
 					
 					}
 					
